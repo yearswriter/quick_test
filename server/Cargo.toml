@@ -1,0 +1,8 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.48.0", features = ["macros", "net", "bytes", "sync", "fs", "rt-multi-thread", "time", "signal", "io-std", "io-util", "process"] }
+tokio-util = { version = "0.7.17", features = ["net", "time", "futures-io", "futures-util", "rt"] }
