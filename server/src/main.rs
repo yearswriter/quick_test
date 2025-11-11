@@ -13,7 +13,8 @@ use tracing::{error, info, instrument, warn};
 async fn process_socket(mut socket: TcpStream) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
-    let read_timeout = Duration::from_secs(5);
+    // in a race with client's task retry timeout
+    let read_timeout = Duration::from_millis(100);
 
     match timeout(read_timeout, socket.read_exact(&mut buf)).await {
         Ok(Ok(_)) => {
