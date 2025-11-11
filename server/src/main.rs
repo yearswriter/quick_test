@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::io::{self, AsyncReadExt};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
 use tokio::signal;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
@@ -64,18 +65,52 @@ async fn main() -> io::Result<()> {
         .with_writer(writer)
         .init();
 
+    // 1000 out of 1024 is probably crasy,
+    // probably need this to be parameter
+    let sem_fd = Arc::new(Semaphore::new(1000));
+    // 500 for listener backlog
+    let sem_conn = Arc::new(Semaphore::new(500));
+    // empty conn_permit to switch select branches
+    let mut conn_permit: Option<OwnedSemaphorePermit> = None;
+
     loop {
         tokio::select! {
-         Ok((socket, _)) = listener.accept() => {
-            tokio::spawn(process_socket(socket, token.clone()));
+        // This branch is *only* enabled if we are *not*
+        // already holding a permit (`conn_permit.is_none()`).
+        conn_result = sem_conn.clone().acquire_owned(), if conn_permit.is_none() => {
+            match conn_result {
+                Ok(c_permit) => {
+                    info!("conn permit");
+                    conn_permit = Some(c_permit)
+                }
+                Err(error) => {
+                        warn!("Failed to acquire conn permit: {:?}, Shutting down", error);
+                        token.cancel();
+                }
+            }
         }
-        _ = token.cancelled() => {
-            println!("\nTask canceled token, shutting down!");
-            break;
-        }
-        Ok(()) = signal::ctrl_c() => {
-            println!("\nReceived Ctrl+C, shutting down!");
-            break;
+        Ok((socket, _)) = listener.accept(), if conn_permit.is_some() => {
+            info!("new socket");
+            let sem_fd_cloned = sem_fd.clone();
+            let token_cloned = token.clone();
+            // this sets conn_permit to None
+            let permit = conn_permit.take().unwrap();
+            tokio::spawn(async move {
+                // fd limit semaphor
+                let fd_permit = match sem_fd_cloned.acquire().await {
+                    Ok(f_permit) => f_permit,
+                    Err(error) => {
+                        warn!(
+                            "Failed to aquire permit on sempahore, error: {:?}",
+                            error
+                        );
+                        drop(permit);
+                        return;
+                    }
+                };
+                process_socket(socket, token_cloned).await;
+                drop(fd_permit);
+            });
         }
             _ = token.cancelled() => {
                 info!("\nTask canceled token, shutting down!");
