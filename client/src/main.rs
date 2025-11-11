@@ -15,14 +15,14 @@ async fn main() -> io::Result<()> {
         .with_writer(writer)
         .init();
 
-    let addr = "127.0.0.1:8150".parse().unwrap();
+    let addr = "10.204.1.2:8150".parse().unwrap();
     let mut tasks = JoinSet::new();
     let sem = Arc::new(Semaphore::new(1000)); //absolute maximum of 1024
 
     for task in 1..100_000 {
         let sem_cloned = sem.clone();
         tasks.spawn(async move {
-            let _permit = match sem_cloned.acquire().await {
+            let permit = match sem_cloned.acquire().await {
                 Ok(permit) => permit,
                 Err(error) => {
                     error!(
@@ -76,6 +76,7 @@ async fn main() -> io::Result<()> {
                     panic!("Failed to write to the stream");
                 }
             };
+            drop(permit);
         });
     }
 

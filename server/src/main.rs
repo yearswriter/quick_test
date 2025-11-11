@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
 
 #[instrument(skip_all)]
-async fn process_socket(mut socket: TcpStream, token: CancellationToken) {
+async fn process_socket(mut socket: TcpStream) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
     let read_timeout = Duration::from_secs(5);
@@ -21,7 +21,6 @@ async fn process_socket(mut socket: TcpStream, token: CancellationToken) {
                 Ok(task) => task,
                 Err(error) => {
                     error!("Failed to slice buff for task_id: {:?}", error);
-                    token.cancel();
                     return;
                 }
             };
@@ -33,7 +32,7 @@ async fn process_socket(mut socket: TcpStream, token: CancellationToken) {
             );
         }
         Ok(Err(read_error)) => {
-            error!("Failed to read: {}", read_error);
+            error!("Failed to read socket: {}", read_error);
         }
         Err(_) => {
             warn!("Client timed out from fd: {}", socket.as_raw_fd());
@@ -92,13 +91,15 @@ async fn main() -> io::Result<()> {
         Ok((socket, _)) = listener.accept(), if conn_permit.is_some() => {
             info!("new socket");
             let sem_fd_cloned = sem_fd.clone();
-            let token_cloned = token.clone();
             // this sets conn_permit to None
             let permit = conn_permit.take().unwrap();
             tokio::spawn(async move {
                 // fd limit semaphor
                 let fd_permit = match sem_fd_cloned.acquire().await {
-                    Ok(f_permit) => f_permit,
+                    Ok(f_permit) => {
+                        drop(permit);
+                        f_permit
+                    },
                     Err(error) => {
                         warn!(
                             "Failed to aquire permit on sempahore, error: {:?}",
@@ -108,7 +109,7 @@ async fn main() -> io::Result<()> {
                         return;
                     }
                 };
-                process_socket(socket, token_cloned).await;
+                process_socket(socket).await;
                 drop(fd_permit);
             });
         }
