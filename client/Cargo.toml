@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.48.0", features = ["net", "rt-multi-thread", "macros", "time", "bytes", "fs", "sync", "io-std", "io-util", "signal", "process"] }
+tracing = { version = "0.1.41", features = ["log", "async-await"] }
+tracing-appender = "0.2.3"
+tracing-futures = { version = "0.2.5", features = ["tokio", "tokio-executor", "futures"] }
+tracing-subscriber = { version = "0.3.20", features = ["time", "local-time"] }
