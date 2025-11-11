@@ -97,7 +97,6 @@ async fn main() -> io::Result<()> {
                 // fd limit semaphor
                 let fd_permit = match sem_fd_cloned.acquire().await {
                     Ok(f_permit) => {
-                        drop(permit);
                         f_permit
                     },
                     Err(error) => {
