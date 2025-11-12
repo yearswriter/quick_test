@@ -3,8 +3,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{self, AsyncWriteExt};
-use tokio::net::TcpSocket;
-use tokio::sync::Semaphore;
+use tokio::net::{TcpSocket, TcpStream};
+use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
 use tracing::{error, info, instrument, warn};
 
@@ -17,13 +17,17 @@ enum ConnectionError {
     Write(io::Error),
 }
 
+type ConnectionPool = Arc<Mutex<Vec<TcpStream>>>;
+
 #[instrument(skip_all)]
 async fn connection(
     task: u32,
     sem: Arc<Semaphore>,
     addr: SocketAddr,
+    pool: ConnectionPool,
 ) -> Result<(), ConnectionError> {
-    let permit = match sem.acquire().await {
+    // this will be released as _permi's lifetime ends(scope of this fn)
+    let _permit = match sem.acquire().await {
         Ok(permit) => permit,
         Err(error) => {
             // This specific error (Closed) is non-recoverable.
@@ -35,14 +39,39 @@ async fn connection(
         }
     };
 
-    let socket = match TcpSocket::new_v4() {
-        Ok(socket) => socket,
-        Err(error) => {
-            error!(
-                "Failed to create the socket, task: {}, error: {:?}",
-                task, error
-            );
-            return Err(ConnectionError::SocketCreate(error));
+    #[allow(unused_mut)]
+    let mut stream = {
+        let mut locked_pool = pool.lock().await;
+        locked_pool.pop()
+    };
+
+    let mut stream = match stream {
+        Some(stream) => {
+            info!("Reusing connection from pool for tak: {}", task);
+            stream
+        }
+        None => {
+            info!("Pool empty. Creating new connection for task: {}", task);
+            let socket = match TcpSocket::new_v4() {
+                Ok(socket) => socket,
+                Err(error) => {
+                    error!(
+                        "Failed to create the socket, task: {}, error: {:?}",
+                        task, error
+                    );
+                    return Err(ConnectionError::SocketCreate(error));
+                }
+            };
+            match socket.connect(addr).await {
+                Ok(socket) => socket,
+                Err(error) => {
+                    warn!(
+                        "Failed to connect to the socket, task: {}, error: {:?}",
+                        task, error
+                    );
+                    return Err(ConnectionError::Connect(error));
+                }
+            }
         }
     };
 
@@ -58,23 +87,11 @@ async fn connection(
         8,
     ];
 
-    let mut stream = match socket.connect(addr).await {
-        Ok(socket) => socket,
-        Err(error) => {
-            warn!(
-                "Failed to connect to the socket, task: {}, error: {:?}",
-                task, error
-            );
-            return Err(ConnectionError::Connect(error));
-        }
-    };
-
     match stream.write_all(&buf).await {
         Ok(_) => {
             info!("wrote to the stream from task: {}", task);
-            if let Err(e) = stream.shutdown().await {
-                warn!("Failed to shutdown stream, task: {}, error: {:?}", task, e);
-            }
+            let mut locked_pool = pool.lock().await;
+            locked_pool.push(stream);
             Ok(())
         }
         Err(error) => {
@@ -107,11 +124,17 @@ async fn main() -> io::Result<()> {
         .init();
 
     let mut tasks = JoinSet::new();
-    let sem = Arc::new(Semaphore::new(1000)); //absolute maximum of 1024
+    // 500 works for fd and ephemeral port limit
+    // and it matches server's 500 inc conn
+    let sem = Arc::new(Semaphore::new(1000));
+    let pool: ConnectionPool = Arc::new(Mutex::new(Vec::new()));
 
-    for task in 1..100_000 {
+    for task in 1..=1_000_000 {
         let sem_cloned = sem.clone();
-        tasks.spawn(async move { (task, connection(task, sem_cloned, addr).await) });
+        let pool_cloned = pool.clone();
+        tasks.spawn(async move {
+            (task, connection(task, sem_cloned, addr, pool_cloned).await)
+        });
     }
 
     let mut successful_tasks = 0;
@@ -122,26 +145,37 @@ async fn main() -> io::Result<()> {
             Ok((_task, Ok(()))) => {
                 successful_tasks += 1;
             }
-            Ok((task, Err(error))) => match error {
-                ConnectionError::Connect(con_err) => {
+            Ok((task, Err(error))) => {
+                let (is_retryable, specific_error) = match &error {
+                    ConnectionError::Connect(err) => (true, err),
+                    ConnectionError::Write(err) => (true, err),
+                    _ => (false, &io::Error::new(io::ErrorKind::Other, "non-io error")),
+                };
+
+                if is_retryable {
+                    let _reason = match error {
+                        ConnectionError::Connect(_) => "Connection failed",
+                        ConnectionError::Write(_) => "write failed",
+                        _ => "unreachable",
+                    };
                     warn!(
                         "Retrying task {}, reason: connection failed ({:?})",
-                        task, con_err
+                        task, specific_error
                     );
                     retried_tasks += 1;
                     tokio::time::sleep(Duration::from_millis(150)).await;
                     let sem_cloned = sem.clone();
+                    let pool_cloned = pool.clone();
                     tasks.spawn(async move {
-                        (task, connection(task, sem_cloned, addr).await)
+                        (task, connection(task, sem_cloned, addr, pool_cloned).await)
                     });
-                }
-                _ => {
+                } else {
                     error!("Task {} failed: {:?}", task, error);
                     failed_tasks += 1;
                 }
-            },
+            }
             Err(panic_error) => {
-                error!("A task paniced: {:?}", panic_error);
+                error!("A task panicked: {:?}", panic_error);
                 failed_tasks += 1;
             }
         }
