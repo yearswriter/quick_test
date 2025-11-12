@@ -31,7 +31,7 @@ async fn connection(
     addr: SocketAddr,
     pool: ConnectionPool,
 ) -> Result<(), ConnectionError> {
-    // this will be released as _permi's lifetime ends(scope of this fn)
+    // this will be released as _permit's lifetime ends(scope of this fn)
     let _permit = match sem.acquire().await {
         Ok(permit) => permit,
         Err(error) => {
