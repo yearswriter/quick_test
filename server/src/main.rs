@@ -18,7 +18,7 @@ async fn process_socket(mut socket: TcpStream, state: Arc<Vec<AtomicU64>>) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
     // in a race with client's task retry timeout
-    let read_timeout = Duration::from_millis(100);
+    let read_timeout = Duration::from_secs(10);
 
     // Loop to wait for a client to end connection
     // TODO: Frames with tokio_util::{Decoder, Encoder}
@@ -88,8 +88,7 @@ async fn main() -> io::Result<()> {
         .with_writer(writer)
         .init();
 
-    let state_vec: Vec<AtomicU64> =
-        (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
+    let state_vec: Vec<AtomicU64> = (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
     let state = Arc::new(state_vec);
 
     // 500 for listener backlog of 4096 and fd limit of 1024
