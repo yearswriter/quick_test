@@ -14,7 +14,7 @@ async fn process_socket(mut socket: TcpStream) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
     // in a race with client's task retry timeout
-    let read_timeout = Duration::from_secs(5);
+    let read_timeout = Duration::from_millis(500);
 
     // Loop to wait for a client to end connection
     // TODO: Frames with tokio_util::{Decoder, Encoder}
