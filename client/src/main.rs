@@ -8,7 +8,7 @@ use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
 use tracing::{error, info, instrument, warn};
 
-const NUM_TASKS: u32 = 1_000_000;
+const NUM_TASKS: u32 = 100_000;
 
 #[derive(Debug)]
 #[allow(dead_code)]

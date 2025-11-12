@@ -10,7 +10,7 @@ use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
 
-const NUM_TASKS: usize = 1_000_000;
+const NUM_TASKS: usize = 100_000;
 const NUM_BUCKETS: usize = (NUM_TASKS + 63) / 64;
 
 #[instrument(skip_all)]
@@ -18,7 +18,7 @@ async fn process_socket(mut socket: TcpStream, state: Arc<Vec<AtomicU64>>) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
     // in a race with client's task retry timeout
-    let read_timeout = Duration::from_secs(5);
+    let read_timeout = Duration::from_millis(100);
 
     // Loop to wait for a client to end connection
     // TODO: Frames with tokio_util::{Decoder, Encoder}
