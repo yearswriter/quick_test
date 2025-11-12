@@ -16,29 +16,36 @@ async fn process_socket(mut socket: TcpStream) {
     // in a race with client's task retry timeout
     let read_timeout = Duration::from_millis(100);
 
-    match timeout(read_timeout, socket.read_exact(&mut buf)).await {
-        Ok(Ok(_)) => {
-            let received_task: [u8; 4] = match buf[0..4].try_into() {
-                Ok(task) => task,
-                Err(error) => {
-                    error!("Failed to slice buff for task_id: {:?}", error);
-                    return;
-                }
-            };
-            let task_id = u32::from_be_bytes(received_task);
-            info!(
-                "Received task: {}, from fd: {:#}",
-                task_id,
-                socket.as_raw_fd()
-            );
-        }
-        Ok(Err(read_error)) => {
-            error!("Failed to read socket: {}", read_error);
-        }
-        Err(_) => {
-            warn!("Client timed out from fd: {}", socket.as_raw_fd());
-        }
-    };
+    // Loop to wait for a client to end connection
+    // TODO: Frames with tokio_util::{Decoder, Encoder}
+    //  (but that requies thinking about
+    //      proper packet with length headers and fields and such)
+    loop {
+        match timeout(read_timeout, socket.read_exact(&mut buf)).await {
+            Ok(Ok(_)) => {
+                let received_task: [u8; 4] = match buf[0..4].try_into() {
+                    Ok(task) => task,
+                    Err(error) => {
+                        error!("Failed to slice buff for task_id: {:?}", error);
+                        return;
+                    }
+                };
+                let task_id = u32::from_be_bytes(received_task);
+                info!(
+                    "Received task: {}, from fd: {:#}",
+                    task_id,
+                    socket.as_raw_fd()
+                );
+            }
+            Ok(Err(read_error)) => {
+                error!("Failed to read socket: {}", read_error);
+            }
+            Err(_) => {
+                warn!("Client timed out from fd: {}", socket.as_raw_fd());
+                return;
+            }
+        };
+    }
 }
 
 async fn create_listener(addr: SocketAddr) -> io::Result<TcpListener> {
