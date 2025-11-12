@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.1.0 (2025-11-12)
 
+<csr-id-655f8925d7e1dc9a0c9552c9af5359993a2c6e6e/>
+<csr-id-f5989ff7378f6a3f41097018ec237b2c666a1ad4/>
+<csr-id-ae20c5c691ad0f7d4dc7f06334bf62188fbbebbe/>
+
 ### Other
 
  - <csr-id-655f8925d7e1dc9a0c9552c9af5359993a2c6e6e/> Moving to cargo smart-release
@@ -14,12 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-f5989ff7378f6a3f41097018ec237b2c666a1ad4/> parametrise this
  - <csr-id-ae20c5c691ad0f7d4dc7f06334bf62188fbbebbe/> parametrise this
 
+### Documentation
+
+ - <csr-id-394785ea87e08ad3fff532bf0f2d26eb33021f5d/> Autochangelog from smart-release
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 23 commits contributed to the release over the course of 2 calendar days.
- - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 24 commits contributed to the release over the course of 2 calendar days.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
@@ -29,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Autochangelog from smart-release ([`394785e`](https://github.com/yearswriter/quick_test/commit/394785ea87e08ad3fff532bf0f2d26eb33021f5d))
     - Moving to cargo smart-release ([`655f892`](https://github.com/yearswriter/quick_test/commit/655f8925d7e1dc9a0c9552c9af5359993a2c6e6e))
     - Clippy fixes ([`b2b8036`](https://github.com/yearswriter/quick_test/commit/b2b8036bccce549c214acfa3e60e9b5b572ec18a))
     - Better logs ([`c8bcdf9`](https://github.com/yearswriter/quick_test/commit/c8bcdf978b1b6e759dbc4bc9f8cfc9c33e16413f))
