@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::os::unix::io::AsRawFd;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use tokio::io::{self, AsyncReadExt};
 use tokio::net::{TcpListener, TcpSocket, TcpStream};
 use tokio::signal;
@@ -9,12 +10,15 @@ use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
 
+const NUM_TASKS: usize = 1_000_000;
+const NUM_BUCKETS: usize = (NUM_TASKS + 63) / 64;
+
 #[instrument(skip_all)]
-async fn process_socket(mut socket: TcpStream) {
+async fn process_socket(mut socket: TcpStream, state: Arc<Vec<AtomicU64>>) {
     let mut buf = [0u8; 8];
     // timeout for our clients so no zombie holds the connection
     // in a race with client's task retry timeout
-    let read_timeout = Duration::from_millis(500);
+    let read_timeout = Duration::from_secs(5);
 
     // Loop to wait for a client to end connection
     // TODO: Frames with tokio_util::{Decoder, Encoder}
@@ -36,6 +40,17 @@ async fn process_socket(mut socket: TcpStream) {
                     task_id,
                     socket.as_raw_fd()
                 );
+
+                if task_id >= 1 && (task_id as usize) <= NUM_TASKS {
+                    let task_idx = (task_id - 1) as usize;
+                    let index = task_idx / 64;
+                    let bit = task_idx % 64;
+                    let mask = 1 << bit;
+
+                    state[index].fetch_or(mask, std::sync::atomic::Ordering::Relaxed);
+                } else {
+                    warn!("Received out-of-range task_id: {}", task_id);
+                }
             }
             Ok(Err(read_error)) => {
                 error!("Failed to read socket: {}", read_error);
@@ -72,6 +87,10 @@ async fn main() -> io::Result<()> {
         .with_writer(writer)
         .init();
 
+    let state_vec: Vec<AtomicU64> =
+        (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
+    let state = Arc::new(state_vec);
+
     // 500 for listener backlog of 4096 and fd limit of 1024
     let sem_conn = Arc::new(Semaphore::new(500));
     // empty conn_permit to switch select branches
@@ -98,8 +117,9 @@ async fn main() -> io::Result<()> {
             Ok((socket, _)) = listener.accept(), if conn_permit.is_some() => {
                 info!("new socket");
                 let permit = conn_permit.take().unwrap();
+                let state_cloned = state.clone();
                 tokio::spawn(async move {
-                    process_socket(socket).await;
+                    process_socket(socket, state_cloned).await;
                     // explicit for linter
                     // and for readability
                    drop(permit);
@@ -111,6 +131,33 @@ async fn main() -> io::Result<()> {
             }
             Ok(()) = signal::ctrl_c() => {
                 println!("\nReceived Ctrl+C, shutting down!");
+
+                let state_clone = state.clone();
+                let check_handle = tokio::task::spawn_blocking(move || {
+                    let mut missing_tasks = Vec::new();
+                    for task_idx in 0..NUM_TASKS {
+                        let index = task_idx / 64;
+                        let bit = task_idx % 64;
+                        let mask = 1 << bit;
+                        if (state_clone[index].load(std::sync::atomic::Ordering::Relaxed) & mask) == 0 {
+                            missing_tasks.push(task_idx + 1);
+                        }
+                    }
+                    missing_tasks
+                });
+
+                match check_handle.await {
+                    Ok(missing) => {
+                        if missing.is_empty() {
+                            info!("All {} tasks received!", NUM_TASKS);
+                        } else {
+                            warn!("{} tasks missing!", missing.len());
+                        }
+                    }
+                    Err(error) => {
+                        error!("Task check panicked: {:?}", error);
+                    }
+                }
                 break;
             }
         }
