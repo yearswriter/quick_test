@@ -14,6 +14,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::time::OffsetTime;
 
 const NUM_TASKS: usize = 1_000_000;
+#[allow(clippy::manual_div_ceil)]
 const NUM_BUCKETS: usize = (NUM_TASKS + 63) / 64;
 
 #[instrument(skip_all)]

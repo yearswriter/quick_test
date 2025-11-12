@@ -163,7 +163,7 @@ async fn main() -> io::Result<()> {
                 let (is_retryable, specific_error) = match &error {
                     ConnectionError::Connect(err) => (true, err),
                     ConnectionError::Write(err) => (true, err),
-                    _ => (false, &io::Error::new(io::ErrorKind::Other, "non-io error")),
+                    _ => (false, &io::Error::other("non-io error")),
                 };
 
                 if is_retryable {
