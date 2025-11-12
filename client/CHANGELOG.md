@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v0.1.0 (2025-11-12)
 
+<csr-id-f5989ff7378f6a3f41097018ec237b2c666a1ad4/>
+<csr-id-ae20c5c691ad0f7d4dc7f06334bf62188fbbebbe/>
+
 ### Other
 
  - <csr-id-f5989ff7378f6a3f41097018ec237b2c666a1ad4/> parametrise this
  - <csr-id-ae20c5c691ad0f7d4dc7f06334bf62188fbbebbe/> parametrise this
 
+### Documentation
+
+ - <csr-id-46e7caa1f4db8b66de4280fd1d0c7fd4729875de/> Auto changelog from smart-release
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 16 commits contributed to the release over the course of 2 calendar days.
- - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 17 commits contributed to the release over the course of 2 calendar days.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
@@ -27,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Auto changelog from smart-release ([`46e7caa`](https://github.com/yearswriter/quick_test/commit/46e7caa1f4db8b66de4280fd1d0c7fd4729875de))
     - Ci: moving to carg-smart release cause y not figuring out comfy config, mostly want to disable evrything connected to crates.io ([`d4add11`](https://github.com/yearswriter/quick_test/commit/d4add113b6357148eccf3334d03bea65607e7249))
     - Clippy fixes ([`b2b8036`](https://github.com/yearswriter/quick_test/commit/b2b8036bccce549c214acfa3e60e9b5b572ec18a))
     - Just nicer to eye packet construction ([`af55af9`](https://github.com/yearswriter/quick_test/commit/af55af9821c606c38e33e05f57f9b3d4ac9e5397))
