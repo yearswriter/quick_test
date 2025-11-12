@@ -7,6 +7,7 @@ use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
 use tracing::{error, info, instrument, warn};
+use tracing_subscriber::EnvFilter;
 
 const NUM_TASKS: u32 = 1_000_000;
 
@@ -121,7 +122,7 @@ async fn main() -> io::Result<()> {
     let (writer, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_env_filter(EnvFilter::new("info"))
         .with_writer(writer)
         .init();
 

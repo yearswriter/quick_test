@@ -9,4 +9,4 @@ tokio-util = { version = "0.7.17", features = ["net", "rt", "time", "tracing", "
 tracing = { version = "0.1.41", features = ["log", "async-await"] }
 tracing-appender = "0.2.3"
 tracing-futures = { version = "0.2.5", features = ["tokio", "tokio-executor", "futures"] }
-tracing-subscriber = { version = "0.3.20", features = ["time", "local-time"] }
+tracing-subscriber = { version = "0.3.20", features = ["time", "local-time", "env-filter", "std"] }

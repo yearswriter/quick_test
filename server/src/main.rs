@@ -9,6 +9,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
+use tracing_subscriber::EnvFilter;
 
 const NUM_TASKS: usize = 1_000_000;
 const NUM_BUCKETS: usize = (NUM_TASKS + 63) / 64;
@@ -84,11 +85,12 @@ async fn main() -> io::Result<()> {
     let (writer, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
+        .with_env_filter(EnvFilter::new("info"))
         .with_writer(writer)
         .init();
 
-    let state_vec: Vec<AtomicU64> = (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
+    let state_vec: Vec<AtomicU64> =
+        (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
     let state = Arc::new(state_vec);
 
     // 500 for listener backlog of 4096 and fd limit of 1024
