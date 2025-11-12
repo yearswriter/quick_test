@@ -1,3 +1,10 @@
 [workspace]
 resolver = "3"
 members = ["client", "server"]
+
+[workspace.metadata.release]
+publish = false
+tag = true
+
+[workspace.metadata.smart-release]
+publish-to-crates-io = false

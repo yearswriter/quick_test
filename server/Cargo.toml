@@ -39,3 +39,10 @@ tracing-subscriber = { version = "0.3.20", features = [
 	"env-filter",
 	"std",
 ] }
+
+[package.metadata.release]
+publish = false
+tag = true
+
+[package.metadata.smart-release]
+publish-to-crates-io = false
