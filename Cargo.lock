@@ -61,6 +61,8 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "bytes 1.10.1",
+ "time",
  "tokio 1.48.0",
  "tracing",
  "tracing-appender",
@@ -626,6 +628,8 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "bytes 1.10.1",
+ "time",
  "tokio 1.48.0",
  "tokio-util",
  "tracing",
