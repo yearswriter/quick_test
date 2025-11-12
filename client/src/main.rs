@@ -2,12 +2,14 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use time::format_description::well_known::Rfc3339;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
 use tracing::{error, info, instrument, warn};
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::time::OffsetTime;
 
 const NUM_TASKS: u32 = 1_000_000;
 
@@ -121,9 +123,25 @@ async fn main() -> io::Result<()> {
     let file_appender = tracing_appender::rolling::hourly("logs", "client");
     let (writer, _guard) = tracing_appender::non_blocking(file_appender);
 
+    let log_filter = match EnvFilter::try_from_env("QT_LOG_LVL") {
+        Ok(filter) => filter,
+        Err(er) => {
+            warn!("Could not read QT_LOG_LVL env val: {:?}", er);
+            EnvFilter::new("info,time=error")
+        }
+    };
+
+    let local_clock = match OffsetTime::local_rfc_3339() {
+        Ok(time) => time,
+        Err(er) => {
+            warn!("Failed to create clock for logs: {:?}", er);
+            OffsetTime::new(time::UtcOffset::UTC, Rfc3339)
+        }
+    };
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::new("info"))
+        .with_env_filter(log_filter)
         .with_writer(writer)
+        .with_timer(local_clock)
         .init();
 
     let mut tasks = JoinSet::new();
