@@ -80,17 +80,10 @@ async fn connection(
         }
     };
 
-    let task_bytes = (task as u32).to_be_bytes(); // Big Endian [u8;4]
-    let buf: [u8; 8] = [
-        task_bytes[0],
-        task_bytes[1],
-        task_bytes[2],
-        task_bytes[3],
-        0xB,
-        0xA,
-        9,
-        8,
-    ];
+    let task_bytes: [u8; 4] = task.to_be_bytes(); // Big Endian
+    let mut buf = [0u8; 8];
+    buf[0..4].copy_from_slice(&task_bytes);
+    buf[4..8].copy_from_slice(&[0xB, 0xA, 9, 8]);
 
     match stream.write_all(&buf).await {
         Ok(_) => {
