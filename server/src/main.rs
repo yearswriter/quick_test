@@ -54,6 +54,7 @@ async fn process_socket(mut socket: TcpStream, state: Arc<Vec<AtomicU64>>) {
             }
             Ok(Err(read_error)) => {
                 error!("Failed to read socket: {}", read_error);
+                return;
             }
             Err(_) => {
                 warn!("Client timed out from fd: {}", socket.as_raw_fd());
