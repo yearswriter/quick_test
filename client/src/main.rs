@@ -8,6 +8,8 @@ use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
 use tracing::{error, info, instrument, warn};
 
+const NUM_TASKS: u32 = 1_000_000;
+
 #[derive(Debug)]
 #[allow(dead_code)]
 enum ConnectionError {
@@ -129,7 +131,7 @@ async fn main() -> io::Result<()> {
     let sem = Arc::new(Semaphore::new(1000));
     let pool: ConnectionPool = Arc::new(Mutex::new(Vec::new()));
 
-    for task in 1..=1_000_000 {
+    for task in 1..=NUM_TASKS {
         let sem_cloned = sem.clone();
         let pool_cloned = pool.clone();
         tasks.spawn(async move {
