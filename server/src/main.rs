@@ -137,7 +137,7 @@ async fn main() -> io::Result<()> {
                 let state_clone = state.clone();
                 let check_handle = tokio::task::spawn_blocking(move || {
                     let mut missing_tasks = Vec::new();
-                    for task_idx in 0..NUM_TASKS {
+                    for task_idx in 1..=NUM_TASKS {
                         let index = task_idx / 64;
                         let bit = task_idx % 64;
                         let mask = 1 << bit;
