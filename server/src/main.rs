@@ -65,10 +65,7 @@ async fn main() -> io::Result<()> {
         .with_writer(writer)
         .init();
 
-    // 1000 out of 1024 is probably crasy,
-    // probably need this to be parameter
-    let sem_fd = Arc::new(Semaphore::new(1000));
-    // 500 for listener backlog
+    // 500 for listener backlog of 4096 and fd limit of 1024
     let sem_conn = Arc::new(Semaphore::new(500));
     // empty conn_permit to switch select branches
     let mut conn_permit: Option<OwnedSemaphorePermit> = None;
@@ -77,42 +74,30 @@ async fn main() -> io::Result<()> {
         tokio::select! {
         // This branch is *only* enabled if we are *not*
         // already holding a permit (`conn_permit.is_none()`).
-        conn_result = sem_conn.clone().acquire_owned(), if conn_permit.is_none() => {
-            match conn_result {
-                Ok(c_permit) => {
-                    info!("conn permit");
-                    conn_permit = Some(c_permit)
-                }
-                Err(error) => {
-                        warn!("Failed to acquire conn permit: {:?}, Shutting down", error);
-                        token.cancel();
+        // This also means that after 500 connections tasks are
+        // more or less sequential, but wcyd
+            conn_result = sem_conn.clone().acquire_owned(), if conn_permit.is_none() => {
+                match conn_result {
+                    Ok(c_permit) => {
+                        info!("conn permit");
+                        conn_permit = Some(c_permit)
+                    }
+                    Err(error) => {
+                            warn!("Failed to acquire conn permit: {:?}, Shutting down", error);
+                            token.cancel();
+                    }
                 }
             }
-        }
-        Ok((socket, _)) = listener.accept(), if conn_permit.is_some() => {
-            info!("new socket");
-            let sem_fd_cloned = sem_fd.clone();
-            // this sets conn_permit to None
-            let permit = conn_permit.take().unwrap();
-            tokio::spawn(async move {
-                // fd limit semaphor
-                let fd_permit = match sem_fd_cloned.acquire().await {
-                    Ok(f_permit) => {
-                        f_permit
-                    },
-                    Err(error) => {
-                        warn!(
-                            "Failed to aquire permit on sempahore, error: {:?}",
-                            error
-                        );
-                        drop(permit);
-                        return;
-                    }
-                };
-                process_socket(socket).await;
-                drop(fd_permit);
-            });
-        }
+            Ok((socket, _)) = listener.accept(), if conn_permit.is_some() => {
+                info!("new socket");
+                let permit = conn_permit.take().unwrap();
+                tokio::spawn(async move {
+                    process_socket(socket).await;
+                    // explicit for linter
+                    // and for readability
+                   drop(permit);
+                });
+            }
             _ = token.cancelled() => {
                 info!("\nTask canceled token, shutting down!");
                 break;
