@@ -10,7 +10,7 @@ use tokio::time::{Duration, timeout};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, instrument, warn};
 
-const NUM_TASKS: usize = 100_000;
+const NUM_TASKS: usize = 1_000_000;
 const NUM_BUCKETS: usize = (NUM_TASKS + 63) / 64;
 
 #[instrument(skip_all)]
