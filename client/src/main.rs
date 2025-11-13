@@ -112,7 +112,16 @@ async fn main() -> io::Result<()> {
             "Missing <ip:port> argument",
         ));
     }
-    let addr: SocketAddr = SocketAddr::V4(args[1].parse().unwrap());
+    let addr: SocketAddr = match args[1].parse() {
+        Ok(addr) => addr,
+        Err(e) => {
+            eprintln!("Invalid IP:port argument: {}", e);
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid <ip:port> argument",
+            ));
+        }
+    };
     let file_appender = tracing_appender::rolling::hourly("logs", "client");
     let (writer, _guard) = tracing_appender::non_blocking(file_appender);
 
