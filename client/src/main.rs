@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -22,7 +23,7 @@ enum ConnectionError {
     Write(io::Error),
 }
 
-type ConnectionPool = Arc<Mutex<Vec<TcpStream>>>;
+type ConnectionPool = Arc<Mutex<VecDeque<TcpStream>>>;
 
 #[instrument(skip_all)]
 async fn connection(
@@ -47,7 +48,7 @@ async fn connection(
     #[allow(unused_mut)]
     let mut stream = {
         let mut locked_pool = pool.lock().await;
-        locked_pool.pop()
+        locked_pool.pop_front()
     };
 
     let mut stream = match stream {
@@ -89,7 +90,7 @@ async fn connection(
         Ok(_) => {
             info!("wrote to the stream from task: {}", task);
             let mut locked_pool = pool.lock().await;
-            locked_pool.push(stream);
+            locked_pool.push_back(stream);
             Ok(())
         }
         Err(error) => {
@@ -150,7 +151,7 @@ async fn main() -> io::Result<()> {
     // 500 works for fd and ephemeral port limit
     // and it matches server's 500 inc conn
     let sem = Arc::new(Semaphore::new(1000));
-    let pool: ConnectionPool = Arc::new(Mutex::new(Vec::new()));
+    let pool: ConnectionPool = Arc::new(Mutex::new(VecDeque::new()));
 
     for task in 1..=NUM_TASKS {
         let sem_cloned = sem.clone();
