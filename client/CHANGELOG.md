@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### New Features
 
  - <csr-id-6d6a6d799d95b328cf1f5e6a666f797eb5aff38c/> imput validation
+ - <csr-id-a7500d436203d09bdfc5c47866ccc3d55e4f3412/> VecDeque instead of simple Vec for ConnectionPool mutex, way faster
 
 ### Documentation
 
@@ -38,6 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
-    - Imput validation ([`6d6a6d7`](https://github.com/yearswriter/quick_test/commit/6d6a6d799d95b328cf1f5e6a666f797eb5aff38c))
+    - VecDeque instead of simple Vec for ConnectionPool mutex, way faster ([`a7500d4`](https://github.com/yearswriter/quick_test/commit/a7500d436203d09bdfc5c47866ccc3d55e4f3412))
 </details>
 
