@@ -108,8 +108,7 @@ async fn main() -> io::Result<()> {
         .with_timer(local_clock)
         .init();
 
-    let state_vec: Vec<AtomicU64> =
-        (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
+    let state_vec: Vec<AtomicU64> = (0..NUM_BUCKETS).map(|_| AtomicU64::new(0)).collect();
     let state = Arc::new(state_vec);
 
     // 500 for listener backlog of 4096 and fd limit of 1024
@@ -156,7 +155,7 @@ async fn main() -> io::Result<()> {
                 let state_clone = state.clone();
                 let check_handle = tokio::task::spawn_blocking(move || {
                     let mut missing_tasks = Vec::new();
-                    for task_idx in 1..=NUM_TASKS {
+                    for task_idx in 0..NUM_TASKS {
                         let index = task_idx / 64;
                         let bit = task_idx % 64;
                         let mask = 1 << bit;
